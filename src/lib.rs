@@ -1,14 +1,19 @@
 use bigdecimal::BigDecimal;
 use sqlparser::ast::{
-    visit_statements_mut, Expr, GroupByExpr, Query, SelectItem, SetExpr, Statement, Value,
+    visit_statements_mut, Expr, GroupByExpr, Query, SelectItem, SetExpr, Statement,
+    Value as AstValue,
 };
 use std::ops::ControlFlow;
 
-pub type Error = String;
+mod result;
+mod value;
+mod wire;
 
-pub type R = Result<(), Error>;
+pub use value::Value;
 
-pub type Rv = Result<Expr, Error>;
+pub use result::{Error, R};
+
+pub type Rv = Result<Value, Error>;
 
 pub trait Parameters {
     fn get(&self, i: usize) -> Rv;
@@ -17,10 +22,10 @@ pub trait Parameters {
 pub struct ParameterSet {}
 
 impl Parameters for ParameterSet {
-    fn get(&self, _i: usize) -> Rv {
+    fn get(&self, i: usize) -> Rv {
         // TODO: resolve the placeholder to an actual Value.
-        let n = BigDecimal::from(123);
-        Ok(Expr::Value(Value::Number(n, true)))
+        let n = BigDecimal::from(u32::try_from(i).unwrap_or(0u32));
+        Ok(Value::Number(n))
     }
 }
 
@@ -36,9 +41,9 @@ pub fn resolve(ps: &dyn Parameters, p: &str) -> Rv {
 
 pub fn resolve_parameters_expr(ps: &dyn Parameters, x: &mut Expr) -> R {
     match x {
-        Expr::Value(Value::Placeholder(p)) => {
-            let expr = resolve(ps, p)?;
-            *x = expr;
+        Expr::Value(AstValue::Placeholder(p)) => {
+            let v = resolve(ps, p)?;
+            *x = v.into();
         }
         Expr::IsNull(bv) => {
             let v = bv.as_mut();
@@ -247,7 +252,7 @@ pub fn resolve_statement(ps: &dyn Parameters, s: &mut Statement) -> R {
 }
 
 pub fn resolve_all(ps: &dyn Parameters, s: &mut Vec<Statement>) -> R {
-    let result: ControlFlow<String, ()> =
+    let result: ControlFlow<Error, ()> =
         visit_statements_mut(s, |stmt| match resolve_statement(ps, stmt) {
             Ok(_) => ControlFlow::Continue(()),
             Err(e) => ControlFlow::Break(e),
@@ -272,5 +277,8 @@ select $1 px, t.* from test t;";
         let mut rs = Parser::parse_sql(&dialect, sql).unwrap();
         let ps = ParameterSet {};
         resolve_all(&ps, &mut rs).unwrap();
+        for statement in rs.iter() {
+            println!("{}", statement);
+        }
     }
 }
