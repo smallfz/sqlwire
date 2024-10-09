@@ -44,7 +44,55 @@ impl From<Value> for Expr {
                 Expr::Map(Map { entries })
             }
             Value::Null => Expr::Value(AstValue::Null),
-            // _ => Expr::Value(AstValue::Null),
         }
+    }
+}
+
+macro_rules! impl_from_int {
+    ($t: ty) => {
+        impl From<$t> for Value {
+            fn from(i: $t) -> Self {
+                Value::Number(BigDecimal::from(i))
+            }
+        }
+    };
+}
+
+impl_from_int!(i8);
+impl_from_int!(i32);
+impl_from_int!(i64);
+impl_from_int!(i128);
+impl_from_int!(u8);
+impl_from_int!(u32);
+impl_from_int!(u64);
+impl_from_int!(u128);
+
+impl From<isize> for Value {
+    fn from(i: isize) -> Self {
+        Value::Number(BigDecimal::from(i64::try_from(i).unwrap_or(0i64)))
+    }
+}
+
+impl From<usize> for Value {
+    fn from(i: usize) -> Self {
+        Value::Number(BigDecimal::from(u64::try_from(i).unwrap_or(0u64)))
+    }
+}
+
+impl From<&str> for Value {
+    fn from(s: &str) -> Self {
+        Value::String(s.to_string())
+    }
+}
+
+impl From<String> for Value {
+    fn from(s: String) -> Self {
+        Value::String(s)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(bv: bool) -> Self {
+        Value::Bool(bv)
     }
 }

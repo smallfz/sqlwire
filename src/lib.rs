@@ -1,4 +1,4 @@
-use bigdecimal::BigDecimal;
+// use bigdecimal::BigDecimal;
 use sqlparser::ast::{
     visit_statements_mut, Expr, GroupByExpr, Query, SelectItem, SetExpr, Statement,
     Value as AstValue,
@@ -19,13 +19,28 @@ pub trait Parameters {
     fn get(&self, i: usize) -> Rv;
 }
 
-pub struct ParameterSet {}
+#[derive(Default)]
+pub struct ParameterSet {
+    pub values: Vec<Value>,
+}
+
+impl ParameterSet {
+    pub fn add(&mut self, v: Value) -> usize {
+        let pos = self.values.len();
+        self.values.push(v);
+        pos
+    }
+}
 
 impl Parameters for ParameterSet {
     fn get(&self, i: usize) -> Rv {
         // TODO: resolve the placeholder to an actual Value.
-        let n = BigDecimal::from(u32::try_from(i).unwrap_or(0u32));
-        Ok(Value::Number(n))
+        if i > 0 && i <= self.values.len() {
+            return Ok(self.values[i - 1].clone());
+        }
+        // let n = BigDecimal::from(u32::try_from(i).unwrap_or(0u32));
+        // Ok(Value::Number(n))
+        Err(Error::Notfound(format!("${}", i)))
     }
 }
 
@@ -270,12 +285,17 @@ mod tests {
 
     #[test]
     fn sql_parsing_resolving() {
-        let sql = "create table test(x int, y int);
-insert into test (x, y) values($1, $2);
+        let sql = "create table test(x int, y int, title varchar);
+insert into test (x, y, title) values($1, $2, $3);
 select $1 px, t.* from test t;";
         let dialect = GenericDialect {};
         let mut rs = Parser::parse_sql(&dialect, sql).unwrap();
-        let ps = ParameterSet {};
+
+        let mut ps = ParameterSet::default();
+        ps.add(123.into());
+        ps.add(456.into());
+        ps.add("Hell!".into());
+
         resolve_all(&ps, &mut rs).unwrap();
         for statement in rs.iter() {
             println!("{}", statement);
