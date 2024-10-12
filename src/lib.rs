@@ -30,6 +30,9 @@ impl ParameterSet {
         self.values.push(v);
         pos
     }
+    pub fn from(values: Vec<Value>) -> Self {
+        ParameterSet { values }
+    }
 }
 
 impl Parameters for ParameterSet {

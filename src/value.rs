@@ -59,10 +59,12 @@ macro_rules! impl_from_int {
 }
 
 impl_from_int!(i8);
+impl_from_int!(i16);
 impl_from_int!(i32);
 impl_from_int!(i64);
 impl_from_int!(i128);
 impl_from_int!(u8);
+impl_from_int!(u16);
 impl_from_int!(u32);
 impl_from_int!(u64);
 impl_from_int!(u128);
@@ -76,6 +78,18 @@ impl From<isize> for Value {
 impl From<usize> for Value {
     fn from(i: usize) -> Self {
         Value::Number(BigDecimal::from(u64::try_from(i).unwrap_or(0u64)))
+    }
+}
+
+impl From<f32> for Value {
+    fn from(i: f32) -> Self {
+        Value::Number(BigDecimal::try_from(i).unwrap_or(BigDecimal::from(0)))
+    }
+}
+
+impl From<f64> for Value {
+    fn from(i: f64) -> Self {
+        Value::Number(BigDecimal::try_from(i).unwrap_or(BigDecimal::from(0)))
     }
 }
 
